@@ -35,7 +35,7 @@ interface Variant {
   product_category_id: number;
   nama_varian: string;
   stok: number;
-  harga: number;
+  harga: string | number;
   product?: Product;
   category?: Category;
 }
@@ -105,13 +105,12 @@ export default function VariantsPage() {
       field: "harga",
       headerName: "Price",
       width: 150,
-      type: "number",
-      valueFormatter: (params: any) => {
-        if (params.value == null) return "";
+      renderCell: (params: any) => {
+        if (params.value == null) return "-";
         return new Intl.NumberFormat("id-ID", {
           style: "currency",
           currency: "IDR",
-        }).format(params.value);
+        }).format(Number(params.value));
       },
     },
     {

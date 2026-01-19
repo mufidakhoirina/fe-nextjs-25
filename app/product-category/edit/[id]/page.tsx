@@ -1,128 +1,140 @@
-'use client';
+"use client";
 
-import Layout from '@/components/ui/Layout';
-import { service } from '@/services/services';
-import React, { useEffect, useState, useMemo } from 'react';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Button, IconButton } from '@mui/material';
-import { toast } from 'react-toastify';
-import RefreshIcon from '@mui/icons-material/Refresh'; // jalan / install terlebih dahulu: npm install @mui/icons-material
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import ConfirmDelete from '@/components/ui/ConfirmDelete';
-import { ProductCategoryType } from '@/services/data-types/product-category-type';
-import Link from 'next/link';
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  TextField,
+  CircularProgress,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { toast } from "react-toastify";
+import api from "@/services/api";
 
-export default function Page() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [rows, setRows] = useState<ProductCategoryType[]>([]);
-  const apiEndpoint = 'product-categories';
+export default function EditCategoryPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
 
-  // State for deletion
-  const [open, setOpen] = useState(false);
-  const [selectedDelete, setSelectedDelete] = useState({
-    id: '',
-    name: '',
-  });
+  const [formData, setFormData] = useState({ name: "", description: "" });
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
 
-  const handleClickOpen = (id: string, name: string) => {
-    setSelectedDelete({ id, name });
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    setSelectedDelete({ id: '', name: '' });
-  };
-
-  const getData = async () => {
-    setIsLoading(true);
-    try {
-      const response = await service(apiEndpoint);
-      if (!response.error) {
-        setRows(response.data);
+  useEffect(() => {
+    const fetchCategory = async () => {
+      try {
+        const response = await api.get(`/categories/${id}`);
+        if (response.data.status && response.data.data) {
+          const category = response.data.data;
+          setFormData({
+            name: category.name,
+            description: category.description || "",
+          });
+        }
+      } catch (error) {
+        toast.error("Failed to load category");
+        router.push("/product-category");
+      } finally {
+        setFetching(false);
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Something went wrong';
-      toast.error(message);
+    };
+
+    fetchCategory();
+  }, [id, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.put(`/categories/${id}`, formData);
+      toast.success("Category updated successfully");
+      router.push("/product-category");
+    } catch (error: any) {
+      if (error.response && error.response.status === 422) {
+        const errors = error.response.data.errors;
+        Object.keys(errors).forEach((key) => {
+          toast.error(errors[key][0]);
+        });
+      } else {
+        toast.error("Operation failed");
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    getData();
-  }, []);
-
-  const columns: GridColDef[] = useMemo(
-    () => [
-      { field: 'name', headerName: 'Product Name', width: 200 },
-      { field: 'description', headerName: 'Description', width: 300 },
-      {
-        field: 'action',
-        headerName: 'Action',
-        renderCell: (params) => (
-          <>
-            <Link href={`/product-category/edit/${params.row.id}`}>
-              <IconButton size="small">
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Link>
-            <IconButton
-              size="small"
-              onClick={() => handleClickOpen(params.row.id, params.row.name)}
-            >
-              <DeleteOutlineIcon fontSize="small" color="error" />
-            </IconButton>
-          </>
-        ),
-      },
-    ],
-    []
-  );
+  if (fetching) {
+    return (
+      <Box sx={{ p: 4, display: "flex", justifyContent: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Layout>
-      <div className="flex w-full justify-between items-center my-4">
-        <h1 className="text-black text-2xl font-bold">Product Category</h1>
-        <Link href="/product-category/create">
-          <Button variant="contained">Add New</Button>
-        </Link>
-      </div>
+    <Box sx={{ p: 4 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => router.push("/product-category")}
+        sx={{ mb: 3 }}
+      >
+        Back to Categories
+      </Button>
 
-      <div style={{ minHeight: 400, width: '100%' }}>
-        <div className="flex justify-end mb-2">
-          <IconButton
-            onClick={getData}
-            disabled={isLoading}
-            aria-label="refresh"
-          >
-            <RefreshIcon />
-          </IconButton>
-        </div>
-        <DataGrid
-          loading={isLoading}
-          rows={rows}
-          columns={columns}
-          autoHeight
-          pageSizeOptions={[5, 10, 25]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 10 },
-            },
-          }}
-        />
-      </div>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{ fontWeight: 600, color: "#374151", fontSize: "18px", mb: 3 }}
+      >
+        Edit Category
+      </Typography>
 
-      <ConfirmDelete
-        isOpen={open}
-        onClose={handleClose}
-        hrefDelete={apiEndpoint}
-        id={selectedDelete.id}
-        name={selectedDelete.name}
-        refresh={getData}
-      />
-    </Layout>
+      <Paper sx={{ p: 4, maxWidth: 600 }}>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Name"
+            variant="outlined"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Description"
+            variant="outlined"
+            multiline
+            rows={4}
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            sx={{ mb: 3 }}
+          />
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <Button
+              onClick={() => router.push("/product-category")}
+              color="inherit"
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? "Updating..." : "Update Category"}
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
   );
 }

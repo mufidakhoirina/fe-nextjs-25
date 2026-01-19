@@ -1,57 +1,147 @@
 "use client";
 
-import Layout from "@/components/ui/Layout";
-import { service } from "@/services/services";
 import React, { useEffect, useState } from "react";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
-import Button from "@mui/material/Button";
-import Link from "next/link";
-const rows: GridRowsProp = [
-  { id: 1, name: "Data Grid", description: "the Community version" },
-  { id: 2, name: "Data Grid Pro", description: "the Pro version" },
-  { id: 3, name: "Data Grid Premium", description: "the Premium version" },
-];
+import { useRouter } from "next/navigation";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import {
+  Box,
+  Button,
+  Typography,
+  Paper,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { toast } from "react-toastify";
+import api from "@/services/api";
 
-const columns: GridColDef[] = [
-  { field: "name", headerName: "Product Name", width: 200 },
-  { field: "description", headerName: "Description", width: 300 },
-];
+// Types
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-export default function Page() {
-  const [rows, setRows] = useState<ProductCategory[]>([]);
+export default function ProductCategoriesPage() {
+  const router = useRouter();
+  const [rows, setRows] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
-  const getData = async () => {
+  const fetchCategories = async () => {
     setLoading(true);
     try {
-    const response = await service("categories");
-    if (!response.error) {
-      setRows(response.data);
+      const response = await api.get("/categories");
+      if (response.data.status && Array.isArray(response.data.data)) {
+        setRows(response.data.data);
+      } else {
+        setRows([]);
+        console.error("Unexpected API response format", response.data);
+      }
+    } catch (error) {
+      toast.error("Failed to load categories");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    console.log(response);
-  } catch (error) {
-    console.log(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
-    getData();
+    fetchCategories();
   }, []);
 
+  const handleDelete = async (id: number) => {
+    if (confirm("Are you sure you want to delete this category?")) {
+      try {
+        await api.delete(`/categories/${id}`);
+        toast.success("Category deleted successfully");
+        fetchCategories();
+      } catch (error) {
+        toast.error("Failed to delete category");
+      }
+    }
+  };
+
+  const columns: GridColDef[] = [
+    { field: "id", headerName: "ID", width: 70 },
+    { field: "name", headerName: "Name", flex: 1 },
+    { field: "description", headerName: "Description", flex: 1 },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      sortable: false,
+      renderCell: (params: GridRenderCellParams<Category>) => (
+        <Box>
+          <Tooltip title="Edit">
+            <IconButton
+              color="primary"
+              onClick={() =>
+                router.push(`/product-category/edit/${params.row.id}`)
+              }
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton
+              color="error"
+              onClick={() => handleDelete(params.row.id)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
+
   return (
-    <Layout>
-      <div className="flex w-full items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-zinc-900">Product Category</h1>
-        <Link href="/product-category/create">
-          <Button variant="contained">Add New</Button>
-        </Link>
-      </div>
-      <div style={{ height: 300, width: "100%" }}>
-        <DataGrid rows={rows} columns={columns} />
-      </div>
-    </Layout>
+    <Box sx={{ p: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ fontWeight: 600, color: "#374151", fontSize: "18px" }}
+        >
+          Product Categories
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => router.push("/product-category/create")}
+          color="primary"
+        >
+          Add New
+        </Button>
+      </Box>
+
+      <Paper sx={{ height: 600, width: "100%", overflow: "hidden" }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loading}
+          initialState={{
+            pagination: {
+              paginationModel: { page: 0, pageSize: 10 },
+            },
+          }}
+          pageSizeOptions={[5, 10, 25]}
+          checkboxSelection
+          disableRowSelectionOnClick
+        />
+      </Paper>
+    </Box>
   );
 }
