@@ -1,10 +1,11 @@
-"use client"
-import Layout from "@/components/ui/Layout";
-import Button from "@/components/ui/Buttons";
-import { service } from "@/services/services";
-import React, { useEffect } from "react";
-import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+"use client";
 
+import Layout from "@/components/ui/Layout";
+import { service } from "@/services/services";
+import React, { useEffect, useState } from "react";
+import { DataGrid, GridRowsProp, GridColDef } from "@mui/x-data-grid";
+import Button from "@mui/material/Button";
+import Link from "next/link";
 const rows: GridRowsProp = [
   { id: 1, name: "Data Grid", description: "the Community version" },
   { id: 2, name: "Data Grid Pro", description: "the Pro version" },
@@ -17,10 +18,24 @@ const columns: GridColDef[] = [
 ];
 
 export default function Page() {
+  const [rows, setRows] = useState<ProductCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+
   const getData = async () => {
-    const response = await service("product-category");
+    setLoading(true);
+    try {
+    const response = await service("categories");
+    if (!response.error) {
+      setRows(response.data);
+    }
     console.log(response);
-  };
+  } catch (error) {
+    console.log(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     getData();
@@ -28,7 +43,12 @@ export default function Page() {
 
   return (
     <Layout>
-      <h1 className="text-black">Product Category</h1>
+      <div className="flex w-full items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-zinc-900">Product Category</h1>
+        <Link href="/product-category/create">
+          <Button variant="contained">Add New</Button>
+        </Link>
+      </div>
       <div style={{ height: 300, width: "100%" }}>
         <DataGrid rows={rows} columns={columns} />
       </div>

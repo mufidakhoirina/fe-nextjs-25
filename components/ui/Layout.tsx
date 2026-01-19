@@ -1,18 +1,11 @@
-import React from "react";
-import Image from "next/image";
-import Navbar from "./Navbar";
+"use client";
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
+import { Box } from "@mui/material";
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans">
-      <main className="flex min-h-screen w-full flex-col items-center justify-between py-32 px-16 bg-white sm:items-start">
-        <Navbar />
-        {children}
-      </main>
-    </div>
+    <Box component="main" sx={{ p: 0 }}>
+      {children}
+    </Box>
   );
 }
