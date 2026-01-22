@@ -20,8 +20,6 @@ export default function AddProductPage() {
     const fetchCategories = async () => {
       try {
         const response = await service("product-categories");
-        // Adjust depending on actual API response structure (e.g. response.data.data or just response.data)
-        // Assuming Laravel Resource collection returns { data: [...] }
         setCategories(response.data.data || response.data || []);
       } catch (err) {
         console.error("Failed to fetch categories", err);
